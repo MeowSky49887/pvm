@@ -7,7 +7,7 @@ import (
 
 func Help(notFoundError bool) {
 	theme.Title("pvm: PHP Version Manager")
-	theme.Info("Version 1.2.0")
+	theme.Info("Version 1.3.0")
 
 	if notFoundError {
 		theme.Error("Command not found")
@@ -17,6 +17,7 @@ func Help(notFoundError bool) {
 	fmt.Println("    help")
 	fmt.Println("    install")
 	fmt.Println("    uninstall")
+	fmt.Println("    list-remote")
 	fmt.Println("    list")
 	fmt.Println("    use")
 }
