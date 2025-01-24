@@ -11,7 +11,7 @@ This utility changes that.
 
 ## Installation
 
-> [!CAUTION]
+> [!WARNING]
 > version lower than 1.3.0 will have only pvm.exe
 > version 1.3.0 or higher will include pvm-setup.exe but can still get pvm.exe from source
 
