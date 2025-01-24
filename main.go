@@ -31,8 +31,10 @@ func main() {
 	switch args[0] {
 	case "help":
 		commands.Help(false)
-	case "list":
+	case "ls", "list":
 		commands.List()
+	case "ls remote", "ls-remote", "list remote", "list-remote":
+		commands.ListRemote()
 	case "install":
 		commands.Install(args)
 	case "uninstall":

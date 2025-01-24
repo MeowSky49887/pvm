@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
@@ -40,7 +39,7 @@ func Install(args []string) {
 		theme.Warning("Non-thread safe version will be installed")
 	}
 
-	desiredVersionNumbers := common.GetVersion(args[1], desireThreadSafe, "")
+	desiredVersionNumbers := common.ComputeVersion(args[1], desireThreadSafe, "")
 
 	if desiredVersionNumbers == (common.Version{}) {
 		theme.Error("Invalid version specified")
@@ -52,32 +51,30 @@ func Install(args []string) {
 	desiredMinorVersion := desiredVersionNumbers.Minor
 	desiredPatchVersion := desiredVersionNumbers.Patch
 
-	urls := []string{
-		"https://windows.php.net/downloads/releases/archives/",
-		"https://windows.php.net/downloads/releases/",
+	latestVersions, err := common.RetrievePHPVersions("https://windows.php.net/downloads/releases/")
+	if err != nil {
+		log.Fatalln(err)
+	}
+	archivesVersions, err := common.RetrievePHPVersions("https://windows.php.net/downloads/releases/archives/")
+	if err != nil {
+		log.Fatalln(err)
 	}
 
-	var allVersions []common.Version
-
-	// Fetch and process each URL
-	for _, url := range urls {
-		versions := fetchAndProcess(url)
-		allVersions = append(allVersions, versions...)
-	}
-
+	versions := append(latestVersions, archivesVersions...)
+	
 	// find desired version
 	var desiredVersion common.Version
 
 	if desiredMajorVersion > -1 && desiredMinorVersion > -1 && desiredPatchVersion > -1 {
-		desiredVersion = FindExactVersion(allVersions, desiredMajorVersion, desiredMinorVersion, desiredPatchVersion, desireThreadSafe)
+		desiredVersion = FindExactVersion(versions, desiredMajorVersion, desiredMinorVersion, desiredPatchVersion, desireThreadSafe)
 	}
 
 	if desiredMajorVersion > -1 && desiredMinorVersion > -1 && desiredPatchVersion == -1 {
-		desiredVersion = FindLatestPatch(allVersions, desiredMajorVersion, desiredMinorVersion, desireThreadSafe)
+		desiredVersion = FindLatestPatch(versions, desiredMajorVersion, desiredMinorVersion, desireThreadSafe)
 	}
 
 	if desiredMajorVersion > -1 && desiredMinorVersion == -1 && desiredPatchVersion == -1 {
-		desiredVersion = FindLatestMinor(allVersions, desiredMajorVersion, desireThreadSafe)
+		desiredVersion = FindLatestMinor(versions, desiredMajorVersion, desireThreadSafe)
 	}
 
 	if desiredVersion == (common.Version{}) {
@@ -265,61 +262,6 @@ func FindLatestMinor(versions []common.Version, major int, threadSafe bool) comm
 	}
 
 	return latestMinor
-}
-
-func fetchAndProcess(url string) []common.Version {
-	// Perform GET request
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Fatalln(err)
-	}
-	defer resp.Body.Close()
-
-	// Read response body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	// Convert body to string
-	sb := string(body)
-
-	// Regex to match links
-	re := regexp.MustCompile(`<A HREF="([a-zA-Z0-9./-]+)">([a-zA-Z0-9./-]+)</A>`)
-	matches := re.FindAllStringSubmatch(sb, -1)
-
-	var versions []common.Version
-
-	for _, match := range matches {
-		url := match[1]
-		name := match[2]
-
-		// Apply filters
-		if shouldSkip(name) {
-			continue
-		}
-
-		threadSafe := true
-		if strings.Contains(name, "nts") || strings.Contains(name, "NTS") {
-			threadSafe = false
-		}
-
-		// Append the version after processing
-		versions = append(versions, common.GetVersion(name, threadSafe, url))
-	}
-
-	return versions
-}
-
-func shouldSkip(name string) bool {
-	// Skip based on specific criteria
-	return name == "" ||
-		(len(name) > 15 && strings.HasPrefix(name, "php-devel-pack-")) ||
-		(len(name) > 15 && strings.HasPrefix(name, "php-debug-pack-")) ||
-		(len(name) > 14 && strings.HasPrefix(name, "php-test-pack-")) ||
-		strings.Contains(name, "src") ||
-		!strings.HasSuffix(name, ".zip") ||
-		!strings.Contains(name, "x64")
 }
 
 func downloadFile(fileUrl string, filePath string) (bool, error) {
